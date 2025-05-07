@@ -1,0 +1,206 @@
+import tkinter as tk
+from tkinter import ttk, filedialog, messagebox
+import pandas as pd
+import os
+
+class ETLTestingTool:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("ETL Testing Tool")
+        self.root.geometry("800x600")
+        self.root.configure(bg="#f0f0f0")
+
+        # Variables to store file paths
+        self.source_file = tk.StringVar()
+        self.target_file = tk.StringVar()
+        self.source_count_file = tk.StringVar()
+        self.target_count_file = tk.StringVar()
+
+        self.create_widgets()
+
+    def create_widgets(self):
+        # Main frame
+        main_frame = ttk.Frame(self.root, padding="10")
+        main_frame.pack(fill=tk.BOTH, expand=True)
+
+        # Title
+        title_label = ttk.Label(
+            main_frame,
+            text="ETL Testing Tool",
+            font=("Arial", 16, "bold")
+        )
+        title_label.pack(pady=10)
+
+        # Column Validation Section
+        self.create_column_validation_section(main_frame)
+
+        # Count Validation Section
+        self.create_count_validation_section(main_frame)
+
+        # Results Section
+        self.create_results_section(main_frame)
+
+    def create_column_validation_section(self, parent):
+        # Column Validation Frame
+        col_frame = ttk.LabelFrame(parent, text="Column Validation", padding="10")
+        col_frame.pack(fill=tk.X, pady=10)
+
+        # Source File Selection
+        source_frame = ttk.Frame(col_frame)
+        source_frame.pack(fill=tk.X, pady=5)
+        
+        ttk.Label(source_frame, text="Source File:").pack(side=tk.LEFT)
+        ttk.Entry(source_frame, textvariable=self.source_file, width=50).pack(side=tk.LEFT, padx=5)
+        ttk.Button(
+            source_frame,
+            text="Browse",
+            command=lambda: self.browse_file(self.source_file)
+        ).pack(side=tk.LEFT)
+
+        # Target File Selection
+        target_frame = ttk.Frame(col_frame)
+        target_frame.pack(fill=tk.X, pady=5)
+        
+        ttk.Label(target_frame, text="Target File:").pack(side=tk.LEFT)
+        ttk.Entry(target_frame, textvariable=self.target_file, width=50).pack(side=tk.LEFT, padx=5)
+        ttk.Button(
+            target_frame,
+            text="Browse",
+            command=lambda: self.browse_file(self.target_file)
+        ).pack(side=tk.LEFT)
+
+        # Validate Button
+        ttk.Button(
+            col_frame,
+            text="Validate Columns",
+            command=self.validate_columns
+        ).pack(pady=10)
+
+    def create_count_validation_section(self, parent):
+        # Count Validation Frame
+        count_frame = ttk.LabelFrame(parent, text="Count Validation", padding="10")
+        count_frame.pack(fill=tk.X, pady=10)
+
+        # Source Count File Selection
+        source_count_frame = ttk.Frame(count_frame)
+        source_count_frame.pack(fill=tk.X, pady=5)
+        
+        ttk.Label(source_count_frame, text="Source Count File:").pack(side=tk.LEFT)
+        ttk.Entry(source_count_frame, textvariable=self.source_count_file, width=50).pack(side=tk.LEFT, padx=5)
+        ttk.Button(
+            source_count_frame,
+            text="Browse",
+            command=lambda: self.browse_file(self.source_count_file)
+        ).pack(side=tk.LEFT)
+
+        # Target Count File Selection
+        target_count_frame = ttk.Frame(count_frame)
+        target_count_frame.pack(fill=tk.X, pady=5)
+        
+        ttk.Label(target_count_frame, text="Target Count File:").pack(side=tk.LEFT)
+        ttk.Entry(target_count_frame, textvariable=self.target_count_file, width=50).pack(side=tk.LEFT, padx=5)
+        ttk.Button(
+            target_count_frame,
+            text="Browse",
+            command=lambda: self.browse_file(self.target_count_file)
+        ).pack(side=tk.LEFT)
+
+        # Validate Button
+        ttk.Button(
+            count_frame,
+            text="Validate Counts",
+            command=self.validate_counts
+        ).pack(pady=10)
+
+    def create_results_section(self, parent):
+        # Results Frame
+        results_frame = ttk.LabelFrame(parent, text="Validation Results", padding="10")
+        results_frame.pack(fill=tk.BOTH, expand=True, pady=10)
+
+        # Text widget for results
+        self.results_text = tk.Text(results_frame, height=10, width=70)
+        self.results_text.pack(fill=tk.BOTH, expand=True)
+
+    def browse_file(self, file_var):
+        filename = filedialog.askopenfilename(
+            filetypes=[
+                ("Excel files", "*.xlsx *.xls"),
+                ("CSV files", "*.csv"),
+                ("All files", "*.*")
+            ]
+        )
+        if filename:
+            file_var.set(filename)
+
+    def validate_columns(self):
+        if not self.source_file.get() or not self.target_file.get():
+            messagebox.showerror("Error", "Please select both source and target files")
+            return
+
+        try:
+            # Read source and target files
+            source_df = pd.read_excel(self.source_file.get()) if self.source_file.get().endswith(('.xlsx', '.xls')) else pd.read_csv(self.source_file.get())
+            target_df = pd.read_excel(self.target_file.get()) if self.target_file.get().endswith(('.xlsx', '.xls')) else pd.read_csv(self.target_file.get())
+
+            # Get column lists
+            source_cols = set(source_df.columns)
+            target_cols = set(target_df.columns)
+
+            # Compare columns
+            missing_in_target = source_cols - target_cols
+            extra_in_target = target_cols - source_cols
+            common_cols = source_cols.intersection(target_cols)
+
+            # Display results
+            self.results_text.delete(1.0, tk.END)
+            self.results_text.insert(tk.END, "Column Validation Results:\n\n")
+            self.results_text.insert(tk.END, f"Common columns: {len(common_cols)}\n")
+            self.results_text.insert(tk.END, f"Missing in target: {len(missing_in_target)}\n")
+            self.results_text.insert(tk.END, f"Extra in target: {len(extra_in_target)}\n\n")
+
+            if missing_in_target:
+                self.results_text.insert(tk.END, "Missing columns in target:\n")
+                for col in missing_in_target:
+                    self.results_text.insert(tk.END, f"- {col}\n")
+
+            if extra_in_target:
+                self.results_text.insert(tk.END, "\nExtra columns in target:\n")
+                for col in extra_in_target:
+                    self.results_text.insert(tk.END, f"- {col}\n")
+
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred: {str(e)}")
+
+    def validate_counts(self):
+        if not self.source_count_file.get() or not self.target_count_file.get():
+            messagebox.showerror("Error", "Please select both source and target count files")
+            return
+
+        try:
+            # Read source and target files
+            source_df = pd.read_excel(self.source_count_file.get()) if self.source_count_file.get().endswith(('.xlsx', '.xls')) else pd.read_csv(self.source_count_file.get())
+            target_df = pd.read_excel(self.target_count_file.get()) if self.target_count_file.get().endswith(('.xlsx', '.xls')) else pd.read_csv(self.target_count_file.get())
+
+            # Get row counts
+            source_count = len(source_df)
+            target_count = len(target_df)
+
+            # Display results
+            self.results_text.delete(1.0, tk.END)
+            self.results_text.insert(tk.END, "Count Validation Results:\n\n")
+            self.results_text.insert(tk.END, f"Source count: {source_count}\n")
+            self.results_text.insert(tk.END, f"Target count: {target_count}\n")
+            self.results_text.insert(tk.END, f"Difference: {abs(source_count - target_count)}\n")
+
+            if source_count == target_count:
+                self.results_text.insert(tk.END, "\nStatus: Counts match! ✓\n")
+            else:
+                self.results_text.insert(tk.END, "\nStatus: Counts do not match! ✗\n")
+
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred: {str(e)}")
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = ETLTestingTool(root)
+    root.mainloop()
